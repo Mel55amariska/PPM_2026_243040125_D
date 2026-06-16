@@ -1,7 +1,50 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io' show File;
 
 void main() {
   runApp(const MyApp());
+}
+
+class ProfileData {
+  String name;
+  String role;
+  String? profileImagePath;
+  Uint8List? profileImageBytes;
+  String about;
+  String education;
+  String location;
+  String contact;
+  List<String> skills;
+  List<Experience> experiences;
+
+  ProfileData({
+    required this.name,
+    required this.role,
+    this.profileImagePath,
+    this.profileImageBytes,
+    required this.about,
+    required this.education,
+    required this.location,
+    required this.contact,
+    required this.skills,
+    required this.experiences,
+  });
+}
+
+class Experience {
+  String title;
+  String description;
+  String? imagePath;
+  Uint8List? imageBytes;
+
+  Experience({
+    required this.title,
+    required this.description,
+    this.imagePath,
+    this.imageBytes,
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -9,54 +52,121 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
+      title: 'Profile Quiz 2026',
       debugShowCheckedModeBanner: false,
-      home: ProfilePage(),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
+      ),
+      home: const ProfilePage(),
     );
   }
 }
 
-// =====================================================================
-// PROFILE PAGE
-// =====================================================================
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  late ProfileData _profile;
+
+  @override
+  void initState() {
+    super.initState();
+    _profile = ProfileData(
+      name: 'Mela Mariska',
+      role: 'Mahasiswi Teknik Informatika',
+      about: 'Saya suka ngoding.',
+      education: 'Universitas Pasundan — Semester 6',
+      location: 'Bandung, Indonesia',
+      contact: 'melamariska1@gmail.com\n+62 89-4786-4542',
+      skills: ['Flutter', 'Dart', 'Kotlin', 'Java', 'Git'],
+      experiences: [
+        Experience(
+          title: 'Gatau',
+          description: 'bingung.',
+        ),
+      ],
+    );
+  }
+
+  ImageProvider _getProfileImage(ProfileData profile) {
+    if (kIsWeb && profile.profileImageBytes != null) {
+      return MemoryImage(profile.profileImageBytes!);
+    } else if (!kIsWeb && profile.profileImagePath != null) {
+      return FileImage(File(profile.profileImagePath!));
+    }
+    return const NetworkImage('https://github.com/identicons/.png');
+  }
+
+  Widget _getExperienceImage(Experience exp) {
+    if (kIsWeb && exp.imageBytes != null) {
+      return Image.memory(exp.imageBytes!, width: 50, height: 50, fit: BoxFit.cover);
+    } else if (!kIsWeb && exp.imagePath != null) {
+      return Image.file(File(exp.imagePath!), width: 50, height: 50, fit: BoxFit.cover);
+    }
+    return const Icon(Icons.work, size: 40);
+  }
+
+  void _updateProfile(ProfileData newData) {
+    setState(() {
+      _profile = newData;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profil Saya'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {},
-          ),
-        ],
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
       ),
       drawer: Drawer(
         child: ListView(
           children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue),
-              child: Text(
-                'Menu',
-                style: TextStyle(color: Colors.white, fontSize: 24),
+            UserAccountsDrawerHeader(
+              accountName: Text(_profile.name),
+              accountEmail: Text(_profile.role),
+              currentAccountPicture: CircleAvatar(
+                backgroundImage: _getProfileImage(_profile),
               ),
+              decoration: BoxDecoration(color: Colors.blue.shade700),
             ),
-            const ListTile(leading: Icon(Icons.home), title: Text('Beranda')),
-            const ListTile(leading: Icon(Icons.person), title: Text('Profil')),
-            const ListTile(
-                leading: Icon(Icons.settings), title: Text('Pengaturan')),
             ListTile(
-              leading: const Icon(Icons.widgets),
-              title: const Text('Widget Gallery'),
-              onTap: () {
-                Navigator.pop(context); // tutup drawer
-                Navigator.push(
+              leading: const Icon(Icons.home),
+              title: const Text('Beranda'),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('Edit Profil'),
+              onTap: () async {
+                Navigator.pop(context);
+                final result = await Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const GalleryHome()),
+                  MaterialPageRoute(builder: (_) => EditProfilePage(profile: _profile)),
                 );
+                if (result != null) _updateProfile(result);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.work),
+              title: const Text('Edit Pengalaman'),
+              onTap: () async {
+                Navigator.pop(context);
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => EditExperiencePage(experiences: _profile.experiences)),
+                );
+                if (result != null) {
+                  setState(() {
+                    _profile.experiences = result;
+                  });
+                }
               },
             ),
           ],
@@ -67,101 +177,63 @@ class ProfilePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // === HEADER PROFIL ===
             Center(
               child: Column(
                 children: [
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 50,
-                    backgroundColor: Colors.blue,
-                    child: Icon(Icons.person, size: 60, color: Colors.white),
+                    backgroundImage: _getProfileImage(_profile),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Mela Mariska',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
                   Text(
-                    'Mahasiswa Teknik Informatika',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                    _profile.name,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    _profile.role,
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            // === BARIS STATISTIK ===
-            Row(
-              children: const [
-                Expanded(child: _StatBox(label: 'Post', value: '12')),
-                Expanded(child: _StatBox(label: 'Teman', value: '128')),
-                Expanded(child: _StatBox(label: 'Like', value: '1.2K')),
-              ],
+            _SectionCard(icon: Icons.info_outline, title: 'Tentang Saya', content: _profile.about),
+            _SectionCard(icon: Icons.school, title: 'Pendidikan', content: _profile.education),
+            _SectionCard(icon: Icons.location_on, title: 'Lokasi', content: _profile.location),
+            _SectionCard(icon: Icons.email, title: 'Kontak', content: _profile.contact),
+            _SectionCard(
+              icon: Icons.star,
+              title: 'Skills',
+              content: '',
+              child: Wrap(
+                spacing: 8,
+                children: _profile.skills.map((s) => Chip(label: Text(s))).toList(),
+              ),
             ),
-            const SizedBox(height: 24),
-            // === SECTION CARD ===
-            const _SectionCard(
-              icon: Icons.info_outline,
-              title: 'Tentang Saya',
-              content:
-              'Saya suka belajar hal baru, terutama yang berkaitan '
-                  'dengan teknologi dan pengembangan aplikasi mobile.',
-            ),
-            const _SectionCard(
-              icon: Icons.school,
-              title: 'Pendidikan',
-              content: 'Universitas Pasundan — Semester 5\nIPK: 3.75',
-            ),
-            const _SectionCard(
-              icon: Icons.favorite,
-              title: 'Hobi & Minat',
-              content: 'Coding • Membaca • Fotografi • Game',
-            ),
-            const _SectionCard(
-              icon: Icons.email,
-              title: 'Kontak',
-              content: 'email@example.com\n+62 82-119-850-286',
-            ),
-            const SizedBox(height: 80),
+            const SizedBox(height: 16),
+            const Text('Pengalaman', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Divider(),
+            ..._profile.experiences.map((exp) => Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: ListTile(
+                leading: _getExperienceImage(exp),
+                title: Text(exp.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(exp.description),
+              ),
+            )),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => EditProfilePage(profile: _profile)),
+          );
+          if (result != null) _updateProfile(result);
+        },
         child: const Icon(Icons.edit),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 1,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
-          BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Pesan'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Setting'),
-        ],
-        onTap: (i) {},
-      ),
-    );
-  }
-}
-
-// =====================================================================
-// HELPER WIDGETS — PROFILE PAGE
-// =====================================================================
-class _StatBox extends StatelessWidget {
-  final String label;
-  final String value;
-  const _StatBox({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(value,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text(label, style: TextStyle(color: Colors.grey.shade600)),
-      ],
     );
   }
 }
@@ -170,12 +242,8 @@ class _SectionCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String content;
-  const _SectionCard({
-    required this.icon,
-    required this.title,
-    required this.content,
-  });
-
+  final Widget? child;
+  const _SectionCard({required this.icon, required this.title, required this.content, this.child});
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -191,11 +259,11 @@ class _SectionCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  Text(content, style: const TextStyle(height: 1.4)),
+                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  if (content.isNotEmpty) const SizedBox(height: 6),
+                  if (content.isNotEmpty) Text(content, style: const TextStyle(height: 1.4)),
+                  if (child != null) const SizedBox(height: 8),
+                  if (child != null) child!,
                 ],
               ),
             ),
@@ -206,338 +274,264 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
-// =====================================================================
-// WIDGET GALLERY
-// =====================================================================
-class GalleryHome extends StatelessWidget {
-  const GalleryHome({super.key});
+class EditProfilePage extends StatefulWidget {
+  final ProfileData profile;
+  const EditProfilePage({super.key, required this.profile});
+
+  @override
+  State<EditProfilePage> createState() => _EditProfilePageState();
+}
+
+class _EditProfilePageState extends State<EditProfilePage> {
+  late TextEditingController _nameCtrl;
+  late TextEditingController _roleCtrl;
+  late TextEditingController _aboutCtrl;
+  late TextEditingController _eduCtrl;
+  late TextEditingController _locCtrl;
+  late TextEditingController _contactCtrl;
+  late TextEditingController _skillsCtrl;
+  String? _imagePath;
+  Uint8List? _imageBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.profile.name);
+    _roleCtrl = TextEditingController(text: widget.profile.role);
+    _aboutCtrl = TextEditingController(text: widget.profile.about);
+    _eduCtrl = TextEditingController(text: widget.profile.education);
+    _locCtrl = TextEditingController(text: widget.profile.location);
+    _contactCtrl = TextEditingController(text: widget.profile.contact);
+    _skillsCtrl = TextEditingController(text: widget.profile.skills.join(', '));
+    _imagePath = widget.profile.profileImagePath;
+    _imageBytes = widget.profile.profileImageBytes;
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _roleCtrl.dispose();
+    _aboutCtrl.dispose();
+    _eduCtrl.dispose();
+    _locCtrl.dispose();
+    _contactCtrl.dispose();
+    _skillsCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      if (kIsWeb) {
+        final bytes = await pickedFile.readAsBytes();
+        setState(() {
+          _imageBytes = bytes;
+          _imagePath = pickedFile.path;
+        });
+      } else {
+        setState(() {
+          _imagePath = pickedFile.path;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final categories = [
-      ('Display', Icons.image, Colors.blue),
-      ('Input', Icons.edit, Colors.green),
-      ('Button', Icons.smart_button, Colors.orange),
-      ('Feedback', Icons.notifications, Colors.purple),
-      ('Layout', Icons.dashboard, Colors.teal),
-    ];
     return Scaffold(
-      appBar: AppBar(title: const Text('Widget Gallery')),
-      body: ListView.separated(
+      appBar: AppBar(title: const Text('Edit Profil')),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        itemCount: categories.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
-        itemBuilder: (context, i) {
-          final (name, icon, color) = categories[i];
-          return Card(
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: color,
-                child: Icon(icon, color: Colors.white),
-              ),
-              title: Text(name),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CategoryPage(name: name),
+        child: Column(
+          children: [
+            GestureDetector(
+              onTap: _pickImage,
+              child: CircleAvatar(
+                radius: 50,
+                backgroundImage: _imageBytes != null
+                    ? MemoryImage(_imageBytes!) as ImageProvider
+                    : (_imagePath != null && !kIsWeb
+                    ? FileImage(File(_imagePath!)) as ImageProvider
+                    : const NetworkImage('https://github.com/identicons/ghani.png')),
+                child: const Align(
+                  alignment: Alignment.bottomRight,
+                  child: CircleAvatar(
+                    backgroundColor: Colors.white,
+                    radius: 15,
+                    child: Icon(Icons.camera_alt, size: 18, color: Colors.blue),
                   ),
-                );
-              },
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'Nama')),
+            TextField(controller: _roleCtrl, decoration: const InputDecoration(labelText: 'Role')),
+            TextField(controller: _aboutCtrl, decoration: const InputDecoration(labelText: 'Tentang'), maxLines: 3),
+            TextField(controller: _eduCtrl, decoration: const InputDecoration(labelText: 'Pendidikan')),
+            TextField(controller: _locCtrl, decoration: const InputDecoration(labelText: 'Lokasi')),
+            TextField(controller: _contactCtrl, decoration: const InputDecoration(labelText: 'Kontak'), maxLines: 2),
+            TextField(controller: _skillsCtrl, decoration: const InputDecoration(labelText: 'Skills (pisahkan dengan koma)')),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  final updatedProfile = ProfileData(
+                    name: _nameCtrl.text,
+                    role: _roleCtrl.text,
+                    profileImagePath: _imagePath,
+                    profileImageBytes: _imageBytes,
+                    about: _aboutCtrl.text,
+                    education: _eduCtrl.text,
+                    location: _locCtrl.text,
+                    contact: _contactCtrl.text,
+                    skills: _skillsCtrl.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+                    experiences: widget.profile.experiences,
+                  );
+                  Navigator.pop(context, updatedProfile);
+                },
+                child: const Text('Simpan'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class EditExperiencePage extends StatefulWidget {
+  final List<Experience> experiences;
+  const EditExperiencePage({super.key, required this.experiences});
+
+  @override
+  State<EditExperiencePage> createState() => _EditExperiencePageState();
+}
+
+class _EditExperiencePageState extends State<EditExperiencePage> {
+  late List<Experience> _tempExp;
+  // Memindahkan controller ke state agar tidak re-create saat mengetik teks
+  final List<TextEditingController> _titleControllers = [];
+  final List<TextEditingController> _descControllers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _tempExp = List.from(widget.experiences);
+    for (var exp in _tempExp) {
+      _titleControllers.add(TextEditingController(text: exp.title));
+      _descControllers.add(TextEditingController(text: exp.description));
+    }
+  }
+
+  @override
+  void dispose() {
+    for (var c in _titleControllers) {
+      c.dispose();
+    }
+    for (var c in _descControllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _addExperience() {
+    setState(() {
+      _tempExp.add(Experience(title: '', description: ''));
+      _titleControllers.add(TextEditingController());
+      _descControllers.add(TextEditingController());
+    });
+  }
+
+  void _removeExperience(int index) {
+    setState(() {
+      _tempExp.removeAt(index);
+      _titleControllers[index].dispose();
+      _titleControllers.removeAt(index);
+      _descControllers[index].dispose();
+      _descControllers.removeAt(index);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Edit Pengalaman')),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _tempExp.length,
+        itemBuilder: (context, index) {
+          return Card(
+            margin: const EdgeInsets.only(bottom: 16),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () async {
+                          final picker = ImagePicker();
+                          final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                          if (pickedFile != null) {
+                            if (kIsWeb) {
+                              final bytes = await pickedFile.readAsBytes();
+                              setState(() {
+                                _tempExp[index].imageBytes = bytes;
+                                _tempExp[index].imagePath = pickedFile.path;
+                              });
+                            } else {
+                              setState(() {
+                                _tempExp[index].imagePath = pickedFile.path;
+                              });
+                            }
+                          }
+                        },
+                        child: Container(
+                          width: 60, height: 60,
+                          decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
+                          child: _tempExp[index].imageBytes != null
+                              ? Image.memory(_tempExp[index].imageBytes!, fit: BoxFit.cover)
+                              : (_tempExp[index].imagePath != null && !kIsWeb
+                              ? Image.file(File(_tempExp[index].imagePath!), fit: BoxFit.cover)
+                              : const Icon(Icons.add_a_photo)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _titleControllers[index],
+                          onChanged: (v) => _tempExp[index].title = v,
+                          decoration: const InputDecoration(labelText: 'Judul Pengalaman'),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _removeExperience(index),
+                      ),
+                    ],
+                  ),
+                  TextField(
+                    controller: _descControllers[index],
+                    onChanged: (v) => _tempExp[index].description = v,
+                    decoration: const InputDecoration(labelText: 'Deskripsi Singkat'),
+                    maxLines: 2,
+                  ),
+                ],
+              ),
             ),
           );
         },
       ),
-    );
-  }
-}
-
-class CategoryPage extends StatelessWidget {
-  final String name;
-  const CategoryPage({super.key, required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    final body = switch (name) {
-      'Display' => const _DisplayDemo(),
-      'Input' => const _InputDemo(),
-      'Button' => const _ButtonDemo(),
-      'Feedback' => const _FeedbackDemo(),
-      'Layout' => const _LayoutDemo(),
-      _ => const Center(child: Text('?')),
-    };
-    return Scaffold(
-      appBar: AppBar(title: Text(name)),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: body,
+      floatingActionButton: FloatingActionButton(onPressed: _addExperience, child: const Icon(Icons.add)),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ElevatedButton(
+          onPressed: () => Navigator.pop(context, _tempExp),
+          child: const Text('Simpan Pengalaman'),
+        ),
       ),
-    );
-  }
-}
-
-// =====================================================================
-// DEMO — DISPLAY
-// =====================================================================
-class _DisplayDemo extends StatelessWidget {
-  const _DisplayDemo();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Card', style: TextStyle(fontWeight: FontWeight.bold)),
-        const Card(
-          child: ListTile(
-            leading: Icon(Icons.album),
-            title: Text('Judul Item'),
-            subtitle: Text('Sub-judul'),
-          ),
-        ),
-        const SizedBox(height: 16),
-        const Text('Chip', style: TextStyle(fontWeight: FontWeight.bold)),
-        Wrap(
-          spacing: 8,
-          children: const [
-            Chip(label: Text('Flutter')),
-            Chip(label: Text('Dart')),
-            Chip(label: Text('Mobile')),
-          ],
-        ),
-        const SizedBox(height: 16),
-        const Text('Divider', style: TextStyle(fontWeight: FontWeight.bold)),
-        const Divider(thickness: 2),
-        const SizedBox(height: 16),
-        const Text('CircleAvatar & Icon',
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        Row(children: const [
-          CircleAvatar(child: Text('A')),
-          SizedBox(width: 12),
-          CircleAvatar(
-              backgroundColor: Colors.green, child: Icon(Icons.check)),
-          SizedBox(width: 12),
-          Icon(Icons.star, color: Colors.amber, size: 40),
-        ]),
-      ],
-    );
-  }
-}
-
-// =====================================================================
-// DEMO — INPUT
-// =====================================================================
-class _InputDemo extends StatefulWidget {
-  const _InputDemo();
-
-  @override
-  State<_InputDemo> createState() => _InputDemoState();
-}
-
-class _InputDemoState extends State<_InputDemo> {
-  bool _checked = false;
-  bool _switched = true;
-  double _slider = 0.5;
-  String? _dropdown = 'Apel';
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('TextField'),
-        const SizedBox(height: 4),
-        const TextField(
-          decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            labelText: 'Nama',
-            hintText: 'Ketik nama Anda',
-          ),
-        ),
-        const SizedBox(height: 16),
-        CheckboxListTile(
-          title: const Text('Checkbox'),
-          value: _checked,
-          onChanged: (v) => setState(() => _checked = v ?? false),
-        ),
-        SwitchListTile(
-          title: const Text('Switch'),
-          value: _switched,
-          onChanged: (v) => setState(() => _switched = v),
-        ),
-        const Text('Slider'),
-        Slider(
-          value: _slider,
-          onChanged: (v) => setState(() => _slider = v),
-        ),
-        const SizedBox(height: 8),
-        const Text('Dropdown'),
-        DropdownButton<String>(
-          value: _dropdown,
-          items: ['Apel', 'Jeruk', 'Mangga']
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
-          onChanged: (v) => setState(() => _dropdown = v),
-        ),
-      ],
-    );
-  }
-}
-
-// =====================================================================
-// DEMO — BUTTON
-// =====================================================================
-class _ButtonDemo extends StatelessWidget {
-  const _ButtonDemo();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ElevatedButton(onPressed: () {}, child: const Text('Elevated')),
-        const SizedBox(height: 8),
-        FilledButton(onPressed: () {}, child: const Text('Filled')),
-        const SizedBox(height: 8),
-        OutlinedButton(onPressed: () {}, child: const Text('Outlined')),
-        const SizedBox(height: 8),
-        TextButton(onPressed: () {}, child: const Text('Text Button')),
-        const SizedBox(height: 8),
-        ElevatedButton.icon(
-          onPressed: () {},
-          icon: const Icon(Icons.send),
-          label: const Text('Dengan Icon'),
-        ),
-        const SizedBox(height: 8),
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(Icons.favorite, color: Colors.red),
-        ),
-      ],
-    );
-  }
-}
-
-// =====================================================================
-// DEMO — FEEDBACK
-// =====================================================================
-class _FeedbackDemo extends StatelessWidget {
-  const _FeedbackDemo();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ElevatedButton(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Halo dari SnackBar!')),
-            );
-          },
-          child: const Text('Tampilkan SnackBar'),
-        ),
-        const SizedBox(height: 8),
-        ElevatedButton(
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (_) => AlertDialog(
-                title: const Text('Konfirmasi'),
-                content: const Text('Yakin ingin lanjut?'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Batal'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Ya'),
-                  ),
-                ],
-              ),
-            );
-          },
-          child: const Text('Tampilkan Dialog'),
-        ),
-        const SizedBox(height: 16),
-        const Text('Progress Indicator:'),
-        const SizedBox(height: 8),
-        const LinearProgressIndicator(value: 0.6),
-        const SizedBox(height: 12),
-        const Center(child: CircularProgressIndicator()),
-      ],
-    );
-  }
-}
-
-// =====================================================================
-// DEMO — LAYOUT
-// =====================================================================
-class _LayoutDemo extends StatelessWidget {
-  const _LayoutDemo();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Stack — widget bertumpuk'),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 120,
-          child: Stack(
-            children: [
-              Container(width: double.infinity, color: Colors.blue.shade100),
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Container(width: 50, height: 50, color: Colors.red),
-              ),
-              const Positioned(
-                bottom: 12,
-                right: 12,
-                child: Icon(Icons.star, size: 40, color: Colors.amber),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        const Text('Wrap — auto-pindah baris saat penuh'),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: List.generate(
-            8,
-                (i) => Container(
-              padding: const EdgeInsets.all(12),
-              color: Colors.teal.shade100,
-              child: Text('Item ${i + 1}'),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        const Text('GridView (count: 3)'),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 200,
-          child: GridView.count(
-            crossAxisCount: 3,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            children: List.generate(
-              6,
-                  (i) => Container(
-                color: Colors.purple.shade100,
-                alignment: Alignment.center,
-                child: Text('${i + 1}'),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
